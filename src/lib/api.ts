@@ -6,7 +6,10 @@ export async function analyzeTrack(system: string, prompt: string): Promise<stri
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ system, prompt }),
   })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || `API error: ${res.status}`)
+  }
   const data = await res.json()
   return data.content
 }

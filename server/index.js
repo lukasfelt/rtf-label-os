@@ -10,17 +10,30 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 config({ path: join(__dirname, '..', '.env') })
 
 const app = express()
-app.use(cors())
+
+app.use(cors({ origin: '*' }))
 app.use(express.json())
 
+const MODEL = 'claude-sonnet-4-6'
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// Health check — useful for debugging
+app.get('/api/health', (_, res) => {
+  res.json({
+    status: 'ok',
+    model: MODEL,
+    apiKeySet: !!process.env.ANTHROPIC_API_KEY,
+    port: process.env.PORT || 3001,
+  })
+})
 
 // Standard analysis (returns JSON)
 app.post('/api/analyze', async (req, res) => {
   try {
     const { system, prompt } = req.body
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: MODEL,
       max_tokens: 2000,
       system,
       messages: [{ role: 'user', content: prompt }],
@@ -41,7 +54,7 @@ app.post('/api/stream', async (req, res) => {
 
   try {
     const stream = anthropic.messages.stream({
-      model: 'claude-sonnet-4-5',
+      model: MODEL,
       max_tokens: 2000,
       system: system || 'You are the RTF A&R AI engine for Respect The Funk Records.',
       messages: [{ role: 'user', content: prompt }],
@@ -64,8 +77,6 @@ app.post('/api/stream', async (req, res) => {
   }
 })
 
-app.get('/api/health', (_, res) => res.json({ status: 'ok', model: 'claude-sonnet-4-5' }))
-
 // Serve built frontend in production
 const distPath = join(__dirname, '..', 'dist')
 if (existsSync(distPath)) {
@@ -74,4 +85,4 @@ if (existsSync(distPath)) {
 }
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => console.log(`RTF API server running on :${PORT}`))
+app.listen(PORT, () => console.log(`RTF API server running on :${PORT} | model: ${MODEL} | apiKey: ${process.env.ANTHROPIC_API_KEY ? 'SET' : 'MISSING'}`))
