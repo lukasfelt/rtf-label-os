@@ -31,7 +31,7 @@ export function AIButton({ label, prompt, system }: AIButtonProps) {
         system
       )
     } catch (e) {
-      setError('Failed to connect to RTF API server. Make sure the backend is running.')
+      setError(e instanceof Error ? e.message : String(e))
       setLoading(false)
     }
   }

@@ -44,9 +44,10 @@ export async function streamResponse(
         }
         try {
           const parsed = JSON.parse(data)
+          if (parsed.error) throw new Error(parsed.error)
           if (parsed.text) onChunk(parsed.text)
-        } catch {
-          // ignore parse errors
+        } catch (e) {
+          if (e instanceof Error && e.message !== data) throw e
         }
       }
     }

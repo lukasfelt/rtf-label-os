@@ -62,9 +62,7 @@ export function ListeningAnalytics() {
           setAnalysis(analysis)
           saveToDemoStore(currentDemo.id, analysis)
         } catch (e) {
-          setError(
-            'Failed to connect to RTF API server. Make sure the backend is running on port 3001.\n\nRun: node server/index.js'
-          )
+          setError(e instanceof Error ? e.message : String(e))
         }
         break
       }
