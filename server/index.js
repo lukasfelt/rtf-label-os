@@ -28,7 +28,7 @@ app.get('/api/health', (_, res) => {
     status: 'ok',
     model: MODEL,
     apiKeySet: !!process.env.ANTHROPIC_API_KEY?.trim(),
-    port: process.env.PORT || 3001,
+    port: process.env.PORT || 8080,
   })
 })
 
@@ -79,7 +79,7 @@ if (existsSync(distPath)) {
   app.get('/{*path}', (_, res) => res.sendFile(join(distPath, 'index.html')))
 }
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 8080
 app.listen(PORT, () => {
   console.log(`RTF API server running on :${PORT}`)
   console.log(`API key: ${process.env.ANTHROPIC_API_KEY?.trim() ? 'SET' : 'MISSING'}`)
