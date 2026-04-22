@@ -16,7 +16,7 @@ app.use(express.json())
 
 const MODEL = 'claude-sonnet-4-6'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() })
 
 // Health check — useful for debugging
 app.get('/api/health', (_, res) => {
