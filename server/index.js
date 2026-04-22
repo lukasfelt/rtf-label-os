@@ -10,20 +10,24 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 config({ path: join(__dirname, '..', '.env') })
 
 const app = express()
-
 app.use(cors({ origin: '*' }))
 app.use(express.json())
 
 const MODEL = 'claude-sonnet-4-6'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() })
+// Lazy-initialize so server starts even if key is missing
+function getClient() {
+  const key = process.env.ANTHROPIC_API_KEY?.trim()
+  if (!key) throw new Error('ANTHROPIC_API_KEY is not set in environment variables')
+  return new Anthropic({ apiKey: key })
+}
 
-// Health check — useful for debugging
+// Health check
 app.get('/api/health', (_, res) => {
   res.json({
     status: 'ok',
     model: MODEL,
-    apiKeySet: !!process.env.ANTHROPIC_API_KEY,
+    apiKeySet: !!process.env.ANTHROPIC_API_KEY?.trim(),
     port: process.env.PORT || 3001,
   })
 })
@@ -32,7 +36,7 @@ app.get('/api/health', (_, res) => {
 app.post('/api/analyze', async (req, res) => {
   try {
     const { system, prompt } = req.body
-    const message = await anthropic.messages.create({
+    const message = await getClient().messages.create({
       model: MODEL,
       max_tokens: 2000,
       system,
@@ -47,30 +51,21 @@ app.post('/api/analyze', async (req, res) => {
 
 // Streaming (for briefs, decisions, strategies)
 app.post('/api/stream', async (req, res) => {
-  const { system, prompt } = req.body
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
 
   try {
-    const stream = anthropic.messages.stream({
+    const stream = getClient().messages.stream({
       model: MODEL,
       max_tokens: 2000,
-      system: system || 'You are the RTF A&R AI engine for Respect The Funk Records.',
-      messages: [{ role: 'user', content: prompt }],
+      system: req.body.system || 'You are the RTF A&R AI engine for Respect The Funk Records.',
+      messages: [{ role: 'user', content: req.body.prompt }],
     })
 
-    stream.on('text', (text) => {
-      res.write(`data: ${JSON.stringify({ text })}\n\n`)
-    })
-    stream.on('end', () => {
-      res.write('data: [DONE]\n\n')
-      res.end()
-    })
-    stream.on('error', (err) => {
-      res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`)
-      res.end()
-    })
+    stream.on('text', (text) => res.write(`data: ${JSON.stringify({ text })}\n\n`))
+    stream.on('end', () => { res.write('data: [DONE]\n\n'); res.end() })
+    stream.on('error', (err) => { res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`); res.end() })
   } catch (err) {
     res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`)
     res.end()
@@ -85,4 +80,7 @@ if (existsSync(distPath)) {
 }
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => console.log(`RTF API server running on :${PORT} | model: ${MODEL} | apiKey: ${process.env.ANTHROPIC_API_KEY ? 'SET' : 'MISSING'}`))
+app.listen(PORT, () => {
+  console.log(`RTF API server running on :${PORT}`)
+  console.log(`API key: ${process.env.ANTHROPIC_API_KEY?.trim() ? 'SET' : 'MISSING'}`)
+})
